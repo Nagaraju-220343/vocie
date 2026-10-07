@@ -1,5 +1,7 @@
 from datetime import datetime
-from pydantic import BaseModel, Field
+
+from pydantic import BaseModel
+
 
 class CustomerBase(BaseModel):
     name: str | None = None

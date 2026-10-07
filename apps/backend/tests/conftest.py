@@ -1,3 +1,5 @@
+from typing import Any, Generator
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -6,8 +8,9 @@ from app.db.indexes import ensure_indexes
 from app.db.mongodb import MongoDBManager
 from app.main import app
 
+
 @pytest.fixture(scope="session", autouse=True)
-def test_db():
+def test_db() -> Generator[Any, None, None]:
     settings.mongodb_database = settings.mongodb_test_database
     MongoDBManager.connect()
     ensure_indexes()
@@ -20,12 +23,16 @@ def test_db():
     MongoDBManager.disconnect()
 
 @pytest.fixture(autouse=True)
-def clean_db(test_db):
+def clean_db(test_db: Any) -> Generator[Any, None, None]:
     for collection_name in test_db.list_collection_names():
         test_db[collection_name].delete_many({})
     yield test_db
 
 @pytest.fixture
-def client():
+def client() -> Generator[TestClient, None, None]:
     # Do not use 'with TestClient' to avoid lifespan triggering which disconnects the DB
     yield TestClient(app)
+
+@pytest.fixture
+def anyio_backend() -> str:
+    return 'asyncio'

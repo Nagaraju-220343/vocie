@@ -1,9 +1,11 @@
-from fastapi import APIRouter, HTTPException, Query
-from typing import Optional
-from app.schemas.customer import CustomerCreate, CustomerUpdate, CustomerResponse
-from app.schemas.common import PaginatedResponse, Pagination, ErrorResponse
-from app.services.customer_service import CustomerService
 import math
+from typing import Optional
+
+from fastapi import APIRouter, HTTPException, Query
+
+from app.schemas.common import ErrorResponse, PaginatedResponse, Pagination
+from app.schemas.customer import CustomerCreate, CustomerResponse, CustomerUpdate
+from app.services.customer_service import CustomerService
 
 router = APIRouter(prefix="/customers", tags=["Customers"])
 service = CustomerService()

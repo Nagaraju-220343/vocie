@@ -1,4 +1,3 @@
-import pytest
 
 def test_create_customer(client):
     payload = {"phone": "+123456", "name": "John"}

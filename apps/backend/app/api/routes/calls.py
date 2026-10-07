@@ -1,9 +1,11 @@
-from fastapi import APIRouter, HTTPException, Query
-from typing import Optional
-from app.schemas.call import CallCreate, CallUpdate, CallResponse
-from app.schemas.common import PaginatedResponse, Pagination, ErrorResponse, ErrorDetail
-from app.services.call_service import CallService
 import math
+from typing import Optional
+
+from fastapi import APIRouter, HTTPException, Query
+
+from app.schemas.call import CallCreate, CallResponse, CallUpdate
+from app.schemas.common import ErrorResponse, PaginatedResponse, Pagination
+from app.services.call_service import CallService
 
 router = APIRouter(prefix="/calls", tags=["Calls"])
 service = CallService()
@@ -51,3 +53,15 @@ def update_call(call_id: str, updates: CallUpdate) -> CallResponse:
     if not updated:
         raise HTTPException(status_code=404, detail={"error": {"code": "RESOURCE_NOT_FOUND", "message": "Call not found"}})
     return CallResponse(**updated.model_dump())
+
+from app.schemas.escalation import EscalationRequest
+from app.services.escalation_service import EscalationService
+
+@router.post("/{call_id}/escalate", response_model=CallResponse, responses={404: {"model": ErrorResponse}})
+def escalate_call(call_id: str, request: EscalationRequest) -> CallResponse:
+    esc_service = EscalationService()
+    updated = esc_service.escalate_call(call_id, request.reason, request.notes)
+    if not updated:
+        raise HTTPException(status_code=404, detail={"error": {"code": "RESOURCE_NOT_FOUND", "message": "Call not found"}})
+    return CallResponse(**updated.model_dump())
+

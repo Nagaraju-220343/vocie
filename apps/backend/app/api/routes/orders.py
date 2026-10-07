@@ -1,9 +1,11 @@
-from fastapi import APIRouter, HTTPException, Query
-from typing import Optional
-from app.schemas.order import OrderCreate, OrderUpdate, OrderResponse
-from app.schemas.common import PaginatedResponse, Pagination, ErrorResponse, ErrorDetail
-from app.services.order_service import OrderService
 import math
+from typing import Optional
+
+from fastapi import APIRouter, HTTPException, Query
+
+from app.schemas.common import ErrorResponse, PaginatedResponse, Pagination
+from app.schemas.order import OrderCreate, OrderResponse, OrderUpdate
+from app.services.order_service import OrderService
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
 service = OrderService()

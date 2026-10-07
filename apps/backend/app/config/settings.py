@@ -12,6 +12,13 @@ class Settings(BaseSettings):
     mongodb_database: str = "restaurant_voice_assistant"
     mongodb_test_database: str = "restaurant_voice_assistant_test"
 
+    # Retell Configuration
+    retell_api_key: str = ""
+    retell_agent_id: str = ""
+    retell_phone_number: str = ""
+    retell_webhook_secret: str = ""
+    retell_api_timeout_seconds: int = 30
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

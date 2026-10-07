@@ -1,10 +1,12 @@
-from fastapi import APIRouter, HTTPException, Query, Response
-from typing import List, Optional
-from app.schemas.faq import FaqCreate, FaqUpdate, FaqResponse, FaqMatchResponse
-from app.schemas.common import PaginatedResponse, Pagination, ErrorResponse
-from app.services.faq_service import FaqService
-from app.repositories.faq_repository import FaqRepository
 import math
+from typing import Optional
+
+from fastapi import APIRouter, HTTPException, Query, Response
+
+from app.repositories.faq_repository import FaqRepository
+from app.schemas.common import ErrorResponse, PaginatedResponse, Pagination
+from app.schemas.faq import FaqCreate, FaqMatchResponse, FaqResponse, FaqUpdate
+from app.services.faq_service import FaqService
 
 router = APIRouter(prefix="/faqs", tags=["FAQs"])
 service = FaqService()

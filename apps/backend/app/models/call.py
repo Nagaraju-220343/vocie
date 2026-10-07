@@ -16,6 +16,7 @@ class CallModel(BaseModel):
     endedAt: datetime | None = None
     durationSeconds: int = 0
     transcript: str = ""
+    transcriptMessages: list = Field(default_factory=list)
     summary: str = ""
     recordingUrl: str | None = None
     escalated: bool = False

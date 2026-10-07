@@ -4,7 +4,7 @@ from typing import AsyncIterator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import health
+from app.api.router import api_router
 from app.config.settings import settings
 from app.db.indexes import ensure_indexes
 from app.db.mongodb import MongoDBManager
@@ -39,7 +39,10 @@ app.add_middleware(
 app.add_exception_handler(AppException, app_exception_handler)  # type: ignore
 
 # Routers
-app.include_router(health.router, prefix="/api", tags=["health"])
-
-from app.api.router import api_router
 app.include_router(api_router, prefix="/api")
+
+# Socket.IO
+import socketio
+from app.realtime.socket import sio
+socket_app = socketio.ASGIApp(sio, other_asgi_app=app)
+

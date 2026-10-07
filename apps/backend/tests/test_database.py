@@ -2,7 +2,6 @@ import pytest
 from pymongo.errors import DuplicateKeyError
 
 from app.config.settings import settings
-from app.db.indexes import ensure_indexes
 from app.db.mongodb import MongoDBManager
 from app.models.call import CallModel
 from app.models.customer import CustomerModel
