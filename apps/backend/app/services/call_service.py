@@ -10,7 +10,11 @@ class CallService:
         self.repository = repository or CallRepository()
 
     def get_call(self, call_id: str) -> Optional[CallModel]:
-        return self.repository.get_by_id(call_id)
+        from bson.objectid import ObjectId
+        if ObjectId.is_valid(call_id):
+            call = self.repository.get_by_id(call_id)
+            if call: return call
+        return self.repository.get_by_provider_call_id(call_id)
 
     def get_call_by_provider_id(self, provider_call_id: str) -> Optional[CallModel]:
         return self.repository.get_by_provider_call_id(provider_call_id)

@@ -43,21 +43,28 @@ async def retell_webhook(
         logger.error("Missing call_id in webhook payload")
         return {"status": "ignored", "reason": "missing call_id"}
         
-    logger.info(f"Received webhook event {event} for call {provider_call_id}")
+    logger.info(f"[DIAGNOSTIC] Webhook Event: {event} | Provider Call ID: {provider_call_id}")
+    
+    from app.graph.workflow import live_state_service
     
     if event in ["call_started", "call_analyzed"]:
-        # We can update the call status
         call = call_completion._get_or_create_call(provider_call_id)
+        
         if event == "call_started":
+            state_update = {"status": "IN_PROGRESS"}
+            live_state_service.process_event(provider_call_id, state_update, "update_call_state")
             call_repo.update(str(call.id), {"status": "IN_PROGRESS"})
             
+        elif event == "call_analyzed":
+            state_update = {"status": "ANALYZED"}
+            live_state_service.process_event(provider_call_id, state_update, "update_call_state")
+            
     elif event == "call_ended":
-        transcript_data = call_data.get("transcript", [])
+        transcript_data = call_data.get("transcript_object", [])
         
         # Convert Retell transcript objects to internal model
         messages = []
         for index, item in enumerate(transcript_data):
-            # Retell format uses 'role' and 'content'
             speaker = "customer" if item.get("role") == "user" else "agent"
             text = item.get("content", "")
             messages.append(TranscriptMessage(speaker=speaker, text=text, sequence=index))
@@ -65,9 +72,34 @@ async def retell_webhook(
         call = call_completion._get_or_create_call(provider_call_id)
         
         # We just store everything since this is final transcript
+        transcript_str = "\n\n".join([f"{m.speaker.upper()}:\n{m.text}" for m in messages])
+        call.transcript = transcript_str
         call.transcriptMessages = [m.model_dump() for m in messages]
-        call_repo.update(str(call.id), {"transcriptMessages": call.transcriptMessages})
         
+        # Load existing graph state and update it
+        state_update = {
+            "status": "COMPLETED",
+            "transcript": call.transcriptMessages
+        }
+        live_state_service.process_event(provider_call_id, state_update, "update_transcript")
+        
+        call_repo.update(str(call.id), {
+            "transcriptMessages": call.transcriptMessages,
+            "transcript": transcript_str,
+            "status": "COMPLETED"
+        })
         call_completion.process_completed_call(provider_call_id, messages)
+        
+        # Emit real-time events to update the frontend instantly
+        from app.realtime.socket import publisher
+        import asyncio
+        loop = asyncio.get_event_loop()
+        loop.create_task(publisher.publish("transcript.updated", provider_call_id, 0, {
+            "role": "system",
+            "content": "Final transcript processed."
+        }))
+        loop.create_task(publisher.publish("call.ended", provider_call_id, 0, {
+            "status": "COMPLETED"
+        }))
 
     return {"status": "success"}

@@ -59,9 +59,19 @@ from app.services.escalation_service import EscalationService
 
 @router.post("/{call_id}/escalate", response_model=CallResponse, responses={404: {"model": ErrorResponse}})
 def escalate_call(call_id: str, request: EscalationRequest) -> CallResponse:
-    esc_service = EscalationService()
-    updated = esc_service.escalate_call(call_id, request.reason, request.notes)
+    from app.graph.workflow import live_state_service
+    from bson.objectid import ObjectId
+    
+    # Process through LangGraph first
+    state_update = {"escalation": {"reason": request.reason, "notes": request.notes}}
+    live_state_service.process_event(call_id, state_update, "handle_escalation")
+    
+    # The LangGraph node calls EscalationService which handles DB + socket
+    if ObjectId.is_valid(call_id):
+        updated = service.get_call(call_id)
+    else:
+        updated = service.repository.get_by_provider_call_id(call_id)
+        
     if not updated:
         raise HTTPException(status_code=404, detail={"error": {"code": "RESOURCE_NOT_FOUND", "message": "Call not found"}})
     return CallResponse(**updated.model_dump())
-

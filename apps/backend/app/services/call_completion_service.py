@@ -38,13 +38,26 @@ class CallCompletionService:
             if customer:
                 # Update call customer ref if your model has it (Optional)
                 # Ensure no duplicate order
-                existing_orders = self.order_repo.list() # Ideally find_by_call_id
-                order = next((o for o in existing_orders if o.callId == call.id), None)
+                existing_orders = self.order_repo.find_by_call_id(call.id)
+                order = existing_orders[0] if existing_orders else None
                 if not order:
                     logger.info("Creating new order from call.")
                     order = self._create_order(call.id, customer.id, result)
                 else:
-                    logger.info("Order already exists for this call.")
+                    logger.info("Order already exists for this call. Updating it.")
+                    updates = {
+                        "customerId": customer.id if customer else order.customerId,
+                        "customerName": result.customerName or order.customerName,
+                        "phone": result.phone or order.phone,
+                        "address": result.address or order.address,
+                    }
+                    if order.status != "CONFIRMED":
+                        updates["items"] = [item.model_dump() for item in result.items] if result.items else []
+                        updates["status"] = result.validationStatus
+                        updates["orderType"] = result.fulfillmentType or order.orderType
+                    
+                    self.order_repo.update(str(order.id), updates)
+                    order = self.order_repo.get_by_id(str(order.id))
         
         call.status = "COMPLETED"
         self.call_repo.update(str(call.id), call.model_dump(exclude_none=True))

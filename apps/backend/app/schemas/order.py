@@ -29,6 +29,8 @@ class OrderUpdate(BaseModel):
     orderType: str | None = None
     status: str | None = None
     notes: str | None = None
+    customerName: str | None = None
+    phone: str | None = None
 
 class OrderResponse(OrderBase):
     id: str

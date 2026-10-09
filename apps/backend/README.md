@@ -56,7 +56,6 @@ mypy .
    RETELL_API_KEY=your_retell_api_key
    RETELL_AGENT_ID=your_existing_retell_agent_id
    RETELL_PHONE_NUMBER=+1234567890
-   RETELL_WEBHOOK_SECRET=your_webhook_secret
    ```
 5. **Testing**:
    Once configured, you can make a controlled outbound test call to your personal phone number via the development endpoint:

@@ -1,6 +1,7 @@
 import hmac
 import hashlib
 import json
+import time
 import pytest
 from fastapi.testclient import TestClient
 
@@ -9,10 +10,12 @@ from app.repositories.call_repository import CallRepository
 from app.repositories.customer_repository import CustomerRepository
 from app.repositories.order_repository import OrderRepository
 
-def create_signature(payload: dict) -> str:
-    secret = settings.retell_webhook_secret
-    payload_bytes = json.dumps(payload).encode("utf-8")
-    return hmac.new(secret.encode("utf-8"), payload_bytes, hashlib.sha256).hexdigest()
+def create_signature(payload_bytes: bytes) -> str:
+    secret = settings.retell_api_key
+    timestamp = int(time.time() * 1000)
+    input_str = payload_bytes.decode("utf-8") + str(timestamp)
+    digest = hmac.new(secret.encode("utf-8"), input_str.encode("utf-8"), hashlib.sha256).hexdigest()
+    return f"v={timestamp},d={digest}"
 
 @pytest.fixture
 def call_repo():
@@ -27,6 +30,7 @@ def order_repo():
     return OrderRepository()
 
 def test_full_webhook_order_flow(client: TestClient, call_repo, customer_repo, order_repo):
+    settings.retell_api_key = "test_api_key"
     # Simulate call started
     payload_start = {
         "event": "call_started",
@@ -35,8 +39,9 @@ def test_full_webhook_order_flow(client: TestClient, call_repo, customer_repo, o
         }
     }
     
-    headers = {"X-Retell-Signature": create_signature(payload_start)}
-    res = client.post("/api/webhooks/retell", json=payload_start, headers=headers)
+    payload_bytes = json.dumps(payload_start).encode("utf-8")
+    headers = {"X-Retell-Signature": create_signature(payload_bytes), "Content-Type": "application/json"}
+    res = client.post("/api/webhooks/retell", content=payload_bytes, headers=headers)
     assert res.status_code == 200
     
     # Check call created
@@ -59,8 +64,9 @@ def test_full_webhook_order_flow(client: TestClient, call_repo, customer_repo, o
         }
     }
     
-    headers = {"X-Retell-Signature": create_signature(payload_end)}
-    res = client.post("/api/webhooks/retell", json=payload_end, headers=headers)
+    payload_bytes = json.dumps(payload_end).encode("utf-8")
+    headers = {"X-Retell-Signature": create_signature(payload_bytes), "Content-Type": "application/json"}
+    res = client.post("/api/webhooks/retell", content=payload_bytes, headers=headers)
     assert res.status_code == 200
     
     call = call_repo.get_by_provider_call_id("test_call_fr_001")
@@ -83,6 +89,7 @@ def test_full_webhook_order_flow(client: TestClient, call_repo, customer_repo, o
     assert len(orders[0].items) == 2
     
 def test_duplicate_webhook_does_not_duplicate_order(client: TestClient, call_repo, customer_repo, order_repo):
+    settings.retell_api_key = "test_api_key"
     payload_end = {
         "event": "call_ended",
         "call": {
@@ -92,18 +99,19 @@ def test_duplicate_webhook_does_not_duplicate_order(client: TestClient, call_rep
             ]
         }
     }
-    headers = {"X-Retell-Signature": create_signature(payload_end)}
+    payload_bytes = json.dumps(payload_end).encode("utf-8")
+    headers = {"X-Retell-Signature": create_signature(payload_bytes), "Content-Type": "application/json"}
     
     # First time
-    res = client.post("/api/webhooks/retell", json=payload_end, headers=headers)
+    res = client.post("/api/webhooks/retell", content=payload_bytes, headers=headers)
     assert res.status_code == 200
     
     # Second time
-    res = client.post("/api/webhooks/retell", json=payload_end, headers=headers)
+    res = client.post("/api/webhooks/retell", content=payload_bytes, headers=headers)
     assert res.status_code == 200
     
     # Third time
-    res = client.post("/api/webhooks/retell", json=payload_end, headers=headers)
+    res = client.post("/api/webhooks/retell", content=payload_bytes, headers=headers)
     assert res.status_code == 200
     
     call_id = call_repo.get_by_provider_call_id("test_call_duplicate").id
@@ -111,6 +119,7 @@ def test_duplicate_webhook_does_not_duplicate_order(client: TestClient, call_rep
     assert len(orders) == 1 # Only one order should be created
 
 def test_webhook_invalid_signature(client: TestClient):
+    settings.retell_api_key = "test_api_key"
     payload = {"event": "call_started"}
     headers = {"X-Retell-Signature": "invalid_signature"}
     res = client.post("/api/webhooks/retell", json=payload, headers=headers)

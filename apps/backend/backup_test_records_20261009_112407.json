@@ -1,0 +1,201 @@
+{
+  "calls": [
+    {
+      "_id": "6ac611f719a6c4f2b0ee5a6d",
+      "providerCallId": "demo-call-001",
+      "createdAt": "2026-10-07T09:33:46.892000+00:00",
+      "direction": "INBOUND",
+      "durationSeconds": 120,
+      "escalated": false,
+      "fromNumber": "+33612345678",
+      "intent": "ORDER",
+      "language": "FR",
+      "status": "COMPLETED",
+      "summary": "Customer ordered a meal.",
+      "toNumber": "+33123456789",
+      "transcript": "Bonjour, je voudrais commander...",
+      "updatedAt": "2026-10-07T09:33:46.892000+00:00"
+    },
+    {
+      "_id": "6ac611f719a6c4f2b0ee5a6e",
+      "providerCallId": "demo-call-002",
+      "createdAt": "2026-10-07T09:33:46.959000+00:00",
+      "direction": "INBOUND",
+      "durationSeconds": 95,
+      "escalated": false,
+      "fromNumber": "+447911123456",
+      "intent": "ORDER",
+      "language": "EN",
+      "status": "COMPLETED",
+      "summary": "Customer ordered some items for pickup.",
+      "toNumber": "+33123456789",
+      "transcript": "Hello, I'd like to place an order.",
+      "updatedAt": "2026-10-07T09:33:46.959000+00:00"
+    },
+    {
+      "_id": "6ac611f719a6c4f2b0ee5a6f",
+      "providerCallId": "demo-call-003",
+      "createdAt": "2026-10-07T09:33:47.059000+00:00",
+      "direction": "INBOUND",
+      "durationSeconds": 45,
+      "escalated": false,
+      "fromNumber": "+33698765432",
+      "intent": "FAQ",
+      "language": "FR",
+      "status": "COMPLETED",
+      "summary": "Customer asked about closing hours.",
+      "toNumber": "+33123456789",
+      "transcript": "A quelle heure fermez-vous ?",
+      "updatedAt": "2026-10-07T09:33:47.059000+00:00"
+    },
+    {
+      "_id": "6ac611f719a6c4f2b0ee5a70",
+      "providerCallId": "demo-call-004",
+      "createdAt": "2026-10-07T09:33:47.114000+00:00",
+      "direction": "INBOUND",
+      "durationSeconds": 30,
+      "escalated": false,
+      "fromNumber": "+447911123456",
+      "intent": "FAQ",
+      "language": "EN",
+      "status": "COMPLETED",
+      "summary": "Customer asked about delivery.",
+      "toNumber": "+33123456789",
+      "transcript": "Do you deliver to the local hotels?",
+      "updatedAt": "2026-10-07T09:33:47.114000+00:00"
+    },
+    {
+      "_id": "6ac611f719a6c4f2b0ee5a71",
+      "providerCallId": "demo-call-005",
+      "createdAt": "2026-10-07T09:33:47.173000+00:00",
+      "direction": "INBOUND",
+      "durationSeconds": 60,
+      "escalated": true,
+      "escalationReason": "Human requested",
+      "fromNumber": "+33612345678",
+      "intent": "ESCALATION",
+      "language": "FR",
+      "status": "ESCALATED",
+      "summary": "Customer requested human escalation.",
+      "toNumber": "+33123456789",
+      "transcript": "Je veux parler \u00e0 un humain.",
+      "updatedAt": "2026-10-07T09:33:47.173000+00:00"
+    },
+    {
+      "_id": "6ac8776b48cffba0dbee2eb4",
+      "providerCallId": "test-call-001",
+      "direction": "inbound",
+      "fromNumber": "unknown",
+      "toNumber": "unknown",
+      "language": "unknown",
+      "intent": "UNKNOWN",
+      "status": "ESCALATED",
+      "durationSeconds": 0,
+      "transcript": "",
+      "transcriptMessages": [],
+      "summary": "",
+      "escalated": true,
+      "createdAt": "2026-10-09T05:11:07.553000+00:00",
+      "updatedAt": "2026-10-09T05:11:07.553000+00:00",
+      "escalationReason": "customer request to speak with a person"
+    }
+  ],
+  "orders": [
+    {
+      "_id": "6ac611fbbaf9c0e9098d6eb5",
+      "callId": "6ac611f719a6c4f2b0ee5a6e",
+      "customerId": "6ac611fabaf9c0e9098d6eb3",
+      "items": [
+        {
+          "name": "Croissant",
+          "quantity": 2,
+          "price": 3.0
+        },
+        {
+          "name": "Orange Juice",
+          "quantity": 1,
+          "price": 5.0
+        }
+      ],
+      "customerName": "Michael Brown",
+      "phone": "+447911123456",
+      "address": "Hotel Le Meurice, Room 204",
+      "orderType": "DELIVERY",
+      "status": "PENDING",
+      "notes": "",
+      "createdAt": "2026-10-07T09:33:47.561000+00:00",
+      "updatedAt": "2026-10-07T09:33:47.561000+00:00"
+    },
+    {
+      "_id": "6ac611fbbaf9c0e9098d6eb6",
+      "callId": "6ac611f719a6c4f2b0ee5a6d",
+      "customerId": "6ac611fabaf9c0e9098d6eb2",
+      "items": [
+        {
+          "name": "Quiche Lorraine",
+          "quantity": 1,
+          "price": 12.0
+        }
+      ],
+      "customerName": "Sophie Laurent",
+      "phone": "+33698765432",
+      "address": "5 Rue de Rivoli",
+      "orderType": "PICKUP",
+      "status": "COMPLETED",
+      "notes": "",
+      "createdAt": "2026-10-07T09:33:47.750000+00:00",
+      "updatedAt": "2026-10-07T09:33:47.750000+00:00"
+    },
+    {
+      "_id": "6ac7a7e01df33cd69261f0ae",
+      "callId": "test-call-001",
+      "items": [
+        {
+          "name": "Pizza Margherita",
+          "quantity": 2,
+          "price": 12.5
+        }
+      ],
+      "orderType": "DELIVERY",
+      "status": "CONFIRMED",
+      "notes": "No onions",
+      "createdAt": "2026-10-08T14:25:36.420000+00:00",
+      "updatedAt": "2026-10-08T14:25:36.420000+00:00",
+      "address": "12 Rue de Paris, 75001",
+      "customerName": "Pierre Dupont",
+      "phone": "+33612123456"
+    }
+  ],
+  "customers": [
+    {
+      "_id": "6ac611fabaf9c0e9098d6eb1",
+      "name": "Jean Martin",
+      "phone": "+33612345678",
+      "address": "10 Avenue des Champs",
+      "callCount": 2,
+      "lastCallAt": "2026-10-07T09:33:46.479000+00:00",
+      "createdAt": "2026-10-07T09:33:46.537000+00:00",
+      "updatedAt": "2026-10-07T09:33:46.537000+00:00"
+    },
+    {
+      "_id": "6ac611fabaf9c0e9098d6eb2",
+      "name": "Sophie Laurent",
+      "phone": "+33698765432",
+      "address": "5 Rue de Rivoli",
+      "callCount": 1,
+      "lastCallAt": "2026-10-07T09:33:46.479000+00:00",
+      "createdAt": "2026-10-07T09:33:46.700000+00:00",
+      "updatedAt": "2026-10-07T09:33:46.700000+00:00"
+    },
+    {
+      "_id": "6ac611fabaf9c0e9098d6eb3",
+      "name": "Michael Brown",
+      "phone": "+447911123456",
+      "address": "Hotel Le Meurice, Room 204",
+      "callCount": 3,
+      "lastCallAt": "2026-10-07T09:33:46.479000+00:00",
+      "createdAt": "2026-10-07T09:33:46.819000+00:00",
+      "updatedAt": "2026-10-07T09:33:46.819000+00:00"
+    }
+  ]
+}

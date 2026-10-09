@@ -46,3 +46,45 @@ def test_update_order(client):
     patch_res = client.patch(f"/api/orders/{order_id}", json={"status": "COMPLETED"})
     assert patch_res.status_code == 200
     assert patch_res.json()["status"] == "COMPLETED"
+
+def test_confirm_order_success(client):
+    payload = {
+        "callId": "call_conf",
+        "customerName": "Test Customer",
+        "phone": "123",
+        "orderType": "PICKUP",
+        "items": [{"name": "Soda", "quantity": 1}]
+    }
+    res = client.post("/api/orders", json=payload)
+    order_id = res.json()["id"]
+
+    conf_res = client.post(f"/api/orders/{order_id}/confirm")
+    assert conf_res.status_code == 200
+    assert conf_res.json()["status"] == "CONFIRMED"
+    
+def test_confirm_order_missing_customer(client):
+    payload = {
+        "callId": "call_conf_2",
+        "orderType": "PICKUP",
+        "items": [{"name": "Soda", "quantity": 1}]
+    }
+    res = client.post("/api/orders", json=payload)
+    order_id = res.json()["id"]
+
+    conf_res = client.post(f"/api/orders/{order_id}/confirm")
+    assert conf_res.status_code == 400
+    assert "Customer name or phone is required" in conf_res.json()["detail"]["error"]["message"]
+
+def test_confirm_order_missing_address_delivery(client):
+    payload = {
+        "callId": "call_conf_3",
+        "customerName": "Test Customer",
+        "orderType": "DELIVERY",
+        "items": [{"name": "Soda", "quantity": 1}]
+    }
+    res = client.post("/api/orders", json=payload)
+    order_id = res.json()["id"]
+
+    conf_res = client.post(f"/api/orders/{order_id}/confirm")
+    assert conf_res.status_code == 400
+    assert "Delivery address is required" in conf_res.json()["detail"]["error"]["message"]

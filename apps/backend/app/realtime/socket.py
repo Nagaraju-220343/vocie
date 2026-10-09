@@ -25,6 +25,7 @@ class RealtimeEventPublisher:
         # Publish to specific call room
         room_name = f"call:{call_id}"
         logger.debug(f"Publishing {event_type} to room {room_name}")
+        logger.info(f"[DIAGNOSTIC] Socket.IO Emit | Event: {event_type} | Room: {room_name} | Call ID: {call_id}")
         await self.sio.emit(event_type, event_data, room=room_name)
         
         # Also publish to the global live-calls channel if appropriate
