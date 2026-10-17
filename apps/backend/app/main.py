@@ -46,4 +46,6 @@ app.include_router(api_router, prefix="/api")
 import socketio
 from app.realtime.socket import sio
 socket_app = socketio.ASGIApp(sio, other_asgi_app=app)
+app.mount("/socket.io", socket_app)
+
 

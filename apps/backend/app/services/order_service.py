@@ -1,11 +1,10 @@
+import re
 from typing import List, Optional, Tuple
 
 from app.models.order import OrderModel
 from app.repositories.order_repository import OrderRepository
 from app.schemas.order import OrderCreate, OrderUpdate
 
-
-import re
 
 def clean_name(val: Optional[str]) -> Optional[str]:
     if not val or not val.strip():

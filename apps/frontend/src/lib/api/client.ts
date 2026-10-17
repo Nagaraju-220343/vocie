@@ -4,7 +4,7 @@ import { Customer, PaginatedCustomers } from '@/types/customer';
 import { FAQ, PaginatedFAQs } from '@/types/faq';
 import { PaginatedFeedback } from '@/types/feedback';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -18,6 +18,8 @@ async function fetcher<T>(endpoint: string, options?: RequestInit): Promise<T> {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'ngrok-skip-browser-warning': 'true',
       ...options?.headers,
     },
   });

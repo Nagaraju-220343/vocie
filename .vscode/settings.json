@@ -1,12 +1,10 @@
 {
-    "python.defaultInterpreterPath": "C:\\Users\\Bhargav\\anaconda3\\python.exe",
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
     "python.analysis.extraPaths": [
-        "${workspaceFolder}/apps/backend",
-        "c:/Users/Bhargav/Desktop/vocie/apps/backend"
+        "${workspaceFolder}/apps/backend"
     ],
     "python.autoComplete.extraPaths": [
-        "${workspaceFolder}/apps/backend",
-        "c:/Users/Bhargav/Desktop/vocie/apps/backend"
+        "${workspaceFolder}/apps/backend"
     ],
     "terminal.integrated.env.windows": {
         "PYTHONPATH": "${workspaceFolder}/apps/backend"
