@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api/client';
 import { useRealtime } from '@/hooks/use-realtime';
-import { Call, PaginatedCalls } from '@/types/call';
+import { Call, PaginatedCalls, getCallerDisplayName } from '@/types/call';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -99,7 +99,7 @@ export default function LiveCallsPage() {
               </div>
 
               <div className="mb-6">
-                <h3 className="text-xl font-bold text-slate-900">{call.fromNumber}</h3>
+                <h3 className="text-xl font-bold text-slate-900">{getCallerDisplayName(call)}</h3>
                 {call.language && (
                   <p className="text-sm text-slate-500 mt-1 flex items-center gap-1">
                     Language: <span className="font-medium text-slate-700">{call.language}</span>

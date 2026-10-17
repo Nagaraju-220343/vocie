@@ -2,7 +2,7 @@ import { Call, PaginatedCalls } from '@/types/call';
 import { Order, PaginatedOrders } from '@/types/order';
 import { Customer, PaginatedCustomers } from '@/types/customer';
 import { FAQ, PaginatedFAQs } from '@/types/faq';
-import { Feedback, PaginatedFeedback } from '@/types/feedback';
+import { PaginatedFeedback } from '@/types/feedback';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
@@ -71,5 +71,16 @@ export const apiClient = {
       const query = new URLSearchParams(params).toString();
       return fetcher<PaginatedFeedback>(`/feedback${query ? `?${query}` : ''}`);
     },
+  },
+  voice: {
+    createWebCall: () =>
+      fetcher<{
+        provider: string;
+        call_id: string;
+        access_token: string;
+        status: string;
+      }>('/voice/web-call', {
+        method: 'POST',
+      }),
   },
 };

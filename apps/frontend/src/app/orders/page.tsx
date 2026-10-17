@@ -6,6 +6,7 @@ import { PaginatedOrders } from '@/types/order';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { formatPersonName } from '@/types/call';
 import Link from 'next/link';
 
 export default function OrdersPage() {
@@ -58,7 +59,7 @@ export default function OrdersPage() {
                     {new Date(order.createdAt).toLocaleString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
-                    {order.customerName || 'Unknown'}
+                    {formatPersonName(order.customerName) || order.customerName || 'Customer'}
                   </td>
                   <td className="px-6 py-4 max-w-xs" title={order.items.map(item => `${item.quantity}x ${item.name}`).join(', ')}>
                     {order.items.length > 0 ? (

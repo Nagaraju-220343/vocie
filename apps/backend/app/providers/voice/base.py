@@ -13,11 +13,30 @@ class VoiceCallResult(BaseModel):
     provider_call_id: str
     status: str
 
+
+class WebCallResult(BaseModel):
+    provider: str
+    provider_call_id: str
+    access_token: str
+    status: str
+
+
 class VoiceProvider(ABC):
     @abstractmethod
     async def create_outbound_call(self, to_number: str, metadata: Optional[Dict[str, Any]] = None) -> VoiceCallResult:
         """
         Initiates an outbound voice call to the given phone number.
+        """
+        pass
+
+    @abstractmethod
+    async def create_web_call(
+        self,
+        metadata: Optional[Dict[str, Any]] = None,
+        dynamic_variables: Optional[Dict[str, Any]] = None,
+    ) -> WebCallResult:
+        """
+        Initiates a browser-based web call with the voice provider.
         """
         pass
 

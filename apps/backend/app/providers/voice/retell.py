@@ -4,8 +4,8 @@ from typing import Any, Dict, Optional
 from app.config.settings import settings
 from app.integrations.retell.client import RetellClient
 from app.integrations.retell.exceptions import RetellError
-from app.integrations.retell.models import RetellCreateCallRequest
-from app.providers.voice.base import VoiceCallResult, VoiceProvider, VoiceProviderError
+from app.integrations.retell.models import RetellCreateCallRequest, RetellCreateWebCallRequest
+from app.providers.voice.base import VoiceCallResult, VoiceProvider, VoiceProviderError, WebCallResult
 
 logger = logging.getLogger(__name__)
 
@@ -17,10 +17,10 @@ class RetellVoiceProvider(VoiceProvider):
         
         if not self.agent_id:
             raise VoiceProviderError("RETELL_AGENT_ID is not configured")
-        if not self.phone_number:
-            raise VoiceProviderError("RETELL_PHONE_NUMBER is not configured")
 
     async def create_outbound_call(self, to_number: str, metadata: Optional[Dict[str, Any]] = None) -> VoiceCallResult:
+        if not self.phone_number:
+            raise VoiceProviderError("RETELL_PHONE_NUMBER is not configured")
         try:
             request = RetellCreateCallRequest(
                 from_number=self.phone_number,
@@ -36,6 +36,30 @@ class RetellVoiceProvider(VoiceProvider):
             )
         except RetellError as e:
             logger.error("Provider failed to create outbound call", exc_info=True)
+            raise VoiceProviderError(f"Retell provider error: {str(e)}") from e
+
+    async def create_web_call(
+        self,
+        metadata: Optional[Dict[str, Any]] = None,
+        dynamic_variables: Optional[Dict[str, Any]] = None,
+    ) -> WebCallResult:
+        if not self.agent_id:
+            raise VoiceProviderError("RETELL_AGENT_ID is not configured")
+        try:
+            request = RetellCreateWebCallRequest(
+                agent_id=self.agent_id,
+                metadata=metadata,
+                retell_llm_dynamic_variables=dynamic_variables,
+            )
+            response = await self.client.create_web_call(request)
+            return WebCallResult(
+                provider="retell",
+                provider_call_id=response.call_id,
+                access_token=response.access_token,
+                status=response.call_status,
+            )
+        except RetellError as e:
+            logger.error("Provider failed to create web call", exc_info=True)
             raise VoiceProviderError(f"Retell provider error: {str(e)}") from e
 
     async def get_call(self, provider_call_id: str) -> VoiceCallResult:

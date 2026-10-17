@@ -21,5 +21,6 @@ class CallModel(BaseModel):
     recordingUrl: str | None = None
     escalated: bool = False
     escalationReason: str | None = None
+    customerName: str | None = None
     createdAt: datetime = Field(default_factory=datetime.utcnow)
     updatedAt: datetime = Field(default_factory=datetime.utcnow)

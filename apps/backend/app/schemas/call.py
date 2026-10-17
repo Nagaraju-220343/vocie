@@ -18,6 +18,7 @@ class CallBase(BaseModel):
     recordingUrl: str | None = None
     escalated: bool = False
     escalationReason: str | None = None
+    customerName: str | None = None
 
 class CallCreate(CallBase):
     providerCallId: str
@@ -33,6 +34,7 @@ class CallUpdate(BaseModel):
     recordingUrl: str | None = None
     escalated: bool | None = None
     escalationReason: str | None = None
+    customerName: str | None = None
 
 class CallResponse(CallBase):
     id: str

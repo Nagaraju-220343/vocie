@@ -5,6 +5,29 @@ from app.repositories.order_repository import OrderRepository
 from app.schemas.order import OrderCreate, OrderUpdate
 
 
+import re
+
+def clean_name(val: Optional[str]) -> Optional[str]:
+    if not val or not val.strip():
+        return None
+    cleaned = val.strip()
+    cleaned = re.sub(
+        r"^(\s*(uh|um|er|ah|eh|oh|well|yeah|yep|so|it's|its|im|i'm|this is|my name is|name is|je m'appelle|c'est|le nom est)\b[\s,.:!?-]*)+",
+        "",
+        cleaned,
+        flags=re.IGNORECASE
+    ).strip()
+    cleaned = re.sub(r"^[\s,.:!?-]+", "", cleaned).rstrip(",.:!?-").strip()
+    if re.fullmatch(r"([a-zA-Z]\s+)+[a-zA-Z]", cleaned):
+        cleaned = cleaned.replace(" ", "")
+    if not cleaned or len(cleaned) < 2:
+        return None
+    lower = cleaned.lower()
+    if lower in ["unknown", "web browser", "guest caller", "web call", "customer"] or "browser" in lower:
+        return None
+    return cleaned.title()
+
+
 class OrderService:
     def __init__(self, repository: Optional[OrderRepository] = None):
         self.repository = repository or OrderRepository()
@@ -49,20 +72,28 @@ class OrderService:
             else:
                 return None
                 
+        if not order or not order.id:
+            return None
+                
         updates = update_data.model_dump(exclude_unset=True)
+        if "customerName" in updates and updates["customerName"]:
+            cleaned_cname = clean_name(updates["customerName"])
+            if cleaned_cname:
+                updates["customerName"] = cleaned_cname
+
         if updates:
             self.repository.update(str(order.id), updates)
             if "customerName" in updates and updates["customerName"]:
                 from app.repositories.call_repository import CallRepository
                 call_repo = CallRepository()
                 call = call_repo.get_by_provider_call_id(order.callId)
-                if call and call.fromNumber == "unknown":
-                    call_repo.update(str(call.id), {"fromNumber": updates["customerName"]})
+                if call and call.id:
+                    call_repo.update(str(call.id), {"fromNumber": updates["customerName"], "customerName": updates["customerName"]})
         return self.get_order(str(order.id))
 
     def confirm_order(self, identifier: str) -> Tuple[Optional[OrderModel], Optional[str]]:
         order = self.get_order(identifier)
-        if not order:
+        if not order or not order.id:
             return None, "Order not found"
         
         if order.status == "CONFIRMED":
@@ -81,17 +112,30 @@ class OrderService:
         if order.orderType == "DELIVERY" and not order.address:
             return None, "Delivery address is required for DELIVERY orders"
             
-        if self.repository.update(str(order.id), {"status": "CONFIRMED"}):
+        clean_cname = clean_name(order.customerName) or order.customerName
+        if self.repository.update(str(order.id), {"status": "CONFIRMED", "customerName": clean_cname}):
+            if clean_cname:
+                from app.repositories.call_repository import CallRepository
+                call_repo = CallRepository()
+                call = call_repo.get_by_provider_call_id(order.callId)
+                if call and call.id:
+                    call_repo.update(str(call.id), {"fromNumber": clean_cname, "customerName": clean_cname})
+            
             # Sync customer
             from app.models.customer import CustomerModel
             from app.repositories.customer_repository import CustomerRepository
             cust_repo = CustomerRepository()
             customer = None
             if order.phone:
-                customer = cust_repo.get_by_phone(order.phone)
+                phone_digits = re.sub(r"\D", "", order.phone)
+                for c in cust_repo.list():
+                    c_digits = re.sub(r"\D", "", c.phone or "")
+                    if c_digits and (phone_digits.endswith(c_digits[-8:]) or c_digits.endswith(phone_digits[-8:])):
+                        customer = c
+                        break
             if not customer:
                 c = CustomerModel(
-                    name=order.customerName or "Unknown",
+                    name=clean_cname or "Customer",
                     phone=order.phone or "Unknown",
                     address=order.address,
                     callCount=1,
@@ -99,7 +143,20 @@ class OrderService:
                 )
                 cust_repo.create(c)
             else:
-                cust_repo.update(str(customer.id), {"callCount": customer.callCount + 1, "lastCallAt": order.createdAt})
+                cust_updates = {"callCount": customer.callCount + 1, "lastCallAt": order.createdAt}
+                if clean_cname and (not customer.name or customer.name.lower() in ["unknown", "customer"]):
+                    cust_updates["name"] = clean_cname
+                cust_repo.update(str(customer.id), cust_updates)
+            
+            # Cancel any prior unconfirmed draft orders for this same phone
+            if order.phone:
+                phone_digits = re.sub(r"\D", "", order.phone)
+                for old_ord in self.repository.list():
+                    if old_ord.id and str(old_ord.id) != str(order.id) and old_ord.status in ["DRAFT", "PENDING", "REVIEW_REQUIRED"]:
+                        old_digits = re.sub(r"\D", "", old_ord.phone or "")
+                        if old_digits and (phone_digits.endswith(old_digits[-8:]) or old_digits.endswith(phone_digits[-8:])):
+                            self.repository.update(str(old_ord.id), {"status": "CANCELLED", "notes": (old_ord.notes or "") + " [Superseded by confirmed order]"})
+
             return self.get_order(str(order.id)), None
             
         return None, "Failed to confirm order"

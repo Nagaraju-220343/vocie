@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api/client';
-import { Call } from '@/types/call';
+import { Call, getCallerDisplayName } from '@/types/call';
 import { Order } from '@/types/order';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { ErrorState } from '@/components/ui/ErrorState';
@@ -139,8 +139,8 @@ function CallDetailContent() {
               <div className="flex items-start">
                 <Phone className="w-4 h-4 text-slate-400 mt-0.5 mr-3" />
                 <div>
-                  <p className="text-slate-500 text-xs">Phone</p>
-                  <p className="font-medium text-slate-900">{call.fromNumber}</p>
+                  <p className="text-slate-500 text-xs">Caller / Customer</p>
+                  <p className="font-medium text-slate-900">{getCallerDisplayName(call)}</p>
                 </div>
               </div>
               <div className="flex items-start">

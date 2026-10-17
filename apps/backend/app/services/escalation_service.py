@@ -3,7 +3,6 @@ import asyncio
 from typing import Optional
 from app.repositories.call_repository import CallRepository
 from app.models.call import CallModel
-from app.schemas.call import CallUpdate
 from app.realtime.socket import publisher
 
 logger = logging.getLogger(__name__)

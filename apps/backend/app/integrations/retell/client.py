@@ -10,7 +10,12 @@ from app.integrations.retell.exceptions import (
     RetellConfigurationError,
     RetellNetworkError,
 )
-from app.integrations.retell.models import RetellCallResponse, RetellCreateCallRequest
+from app.integrations.retell.models import (
+    RetellCallResponse,
+    RetellCreateCallRequest,
+    RetellCreateWebCallRequest,
+    RetellWebCallResponse,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +54,28 @@ class RetellClient:
             
         except httpx.RequestError as e:
             logger.error("retell.call.create.failed", extra={"error": str(e)})
+            raise RetellNetworkError(f"Network error calling Retell: {str(e)}")
+
+    async def create_web_call(self, request: RetellCreateWebCallRequest) -> RetellWebCallResponse:
+        url = f"{self.base_url}/v2/create-web-call"
+        logger.info("retell.web_call.create.started", extra={"agent_id": request.agent_id})
+        
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.post(
+                    url, 
+                    headers=self._get_headers(), 
+                    json=request.model_dump(exclude_none=True)
+                )
+                
+            self._handle_response_errors(response)
+            
+            data = response.json()
+            logger.info("retell.web_call.create.success", extra={"call_id": data.get("call_id")})
+            return RetellWebCallResponse(**data)
+            
+        except httpx.RequestError as e:
+            logger.error("retell.web_call.create.failed", extra={"error": str(e)})
             raise RetellNetworkError(f"Network error calling Retell: {str(e)}")
 
     async def get_call(self, call_id: str) -> RetellCallResponse:

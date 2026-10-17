@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api/client';
-import { PaginatedCalls } from '@/types/call';
+import { useRealtime } from '@/hooks/use-realtime';
+import { PaginatedCalls, getCallerDisplayName, formatPersonName } from '@/types/call';
 import { PaginatedOrders } from '@/types/order';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { PhoneCall, ShoppingCart, AlertCircle, PhoneForwarded } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { WebVoiceCallCard } from '@/components/voice/WebVoiceCallCard';
 import Link from 'next/link';
 
 export default function DashboardPage() {
@@ -15,6 +17,20 @@ export default function DashboardPage() {
   const [orders, setOrders] = useState<PaginatedOrders | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const { useEvent } = useRealtime('restaurant:live-calls');
+
+  useEvent('call.started', () => {
+    fetchData();
+  });
+
+  useEvent('call.ended', () => {
+    fetchData();
+  });
+
+  useEvent('order.updated', () => {
+    fetchData();
+  });
 
   const fetchData = async () => {
     try {
@@ -37,15 +53,21 @@ export default function DashboardPage() {
     fetchData();
   }, []);
 
-  if (loading) return <LoadingState message="Loading dashboard..." />;
-  if (error) return <ErrorState message={error} onRetry={fetchData} />;
-
   const activeCalls = calls?.data.filter(c => c.status === 'IN_PROGRESS').length || 0;
   const escalatedCalls = calls?.data.filter(c => c.escalated).length || 0;
+  const confirmedOrdersCount = orders?.data.filter(o => o.status === 'CONFIRMED').length || 0;
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Talk to Le Gourmet - Web Voice Call Interface */}
+      <WebVoiceCallCard onCallStarted={fetchData} onCallEnded={fetchData} />
+
+      {loading && <LoadingState message="Loading dashboard..." />}
+      {error && !loading && <ErrorState message={error} onRetry={fetchData} />}
+
+      {!loading && !error && (
+        <>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {/* Metric Cards */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
           <div className="flex items-center">
@@ -78,7 +100,7 @@ export default function DashboardPage() {
             </div>
             <div className="ml-4">
               <h3 className="text-sm font-medium text-slate-500">Orders Taken</h3>
-              <p className="text-2xl font-semibold text-slate-900">{orders?.pagination.total || 0}</p>
+              <p className="text-2xl font-semibold text-slate-900">{confirmedOrdersCount}</p>
             </div>
           </div>
         </div>
@@ -110,7 +132,7 @@ export default function DashboardPage() {
                 <Link key={call.id} href={`/calls/${call.id}`} className="block hover:bg-slate-50 transition-colors">
                   <div className="px-6 py-4 flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-slate-900">{call.fromNumber}</p>
+                      <p className="text-sm font-medium text-slate-900">{getCallerDisplayName(call)}</p>
                       <p className="text-xs text-slate-500 mt-1">Intent: {call.intent || 'Unknown'}</p>
                     </div>
                     <StatusBadge status={call.status} />
@@ -130,19 +152,27 @@ export default function DashboardPage() {
             {orders?.data.length === 0 ? (
               <div className="p-6 text-center text-sm text-slate-500">No orders yet.</div>
             ) : (
-              orders?.data.map((order) => (
-                <div key={order.id} className="px-6 py-4 flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-slate-900">{order.customerName || 'Unknown Customer'}</p>
-                    <p className="text-xs text-slate-500 mt-1">{order.items.length} items</p>
+              orders?.data.map((order) => {
+                const customerDisplay = formatPersonName(order.customerName) || order.customerName || 'Customer';
+                const itemsSummary = order.items && order.items.length > 0
+                  ? order.items.map(i => `${i.quantity}x ${i.name}`).join(', ')
+                  : (order.orderType && order.orderType !== 'UNKNOWN' ? `${order.orderType.toUpperCase()} order` : 'Order In Progress');
+                return (
+                  <div key={order.id} className="px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">{customerDisplay}</p>
+                      <p className="text-xs text-slate-500 mt-1">{itemsSummary}</p>
+                    </div>
+                    <StatusBadge status={order.status} />
                   </div>
-                  <StatusBadge status={order.status} />
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
       </div>
-    </div>
+    </>
+  )}
+</div>
   );
 }
