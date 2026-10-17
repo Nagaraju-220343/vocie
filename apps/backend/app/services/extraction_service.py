@@ -116,15 +116,33 @@ class OrderExtractionService:
         if "12 rue de paris" in full_text:
             address = "12 Rue de Paris, 75001"
 
-        if "deux pizzas margherita" in full_text or "two pizzas" in full_text or "two margherita pizzas" in full_text or "margherita pizza" in full_text:
-            # We also check for 'make that three' correction
-            if "make that three" in full_text:
-                items.append(OrderItemModel(name="Pizza Margherita", quantity=3))
-            else:
-                items.append(OrderItemModel(name="Pizza Margherita", quantity=2))
+        # Generic quantity parser for items
+        qty_words = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+                     "un": 1, "une": 1, "deux": 2, "trois": 3, "quatre": 4, "cinq": 5, "six": 6, "sept": 7, "huit": 8, "neuf": 9, "dix": 10}
 
-        if "une salade" in full_text:
-            items.append(OrderItemModel(name="Salade", quantity=1))
+        def find_quantity(pattern_keyword: str) -> int:
+            match = re.search(r"(\b\w+\b|\d+)\s+" + pattern_keyword, full_text)
+            if match:
+                tok = match.group(1).lower()
+                if tok.isdigit():
+                    return int(tok)
+                if tok in qty_words:
+                    return qty_words[tok]
+            return 1
+
+        # Check for burgers
+        if "burger" in full_text:
+            qty = find_quantity(r"burgers?")
+            items.append(OrderItemModel(name="Le Gourmet Classic Burger", quantity=qty, price=14.50))
+
+        # Check for pizzas
+        elif "pizza" in full_text:
+            qty = 3 if "make that three" in full_text else find_quantity(r"pizzas?")
+            items.append(OrderItemModel(name="Pizza Margherita", quantity=qty, price=12.00))
+
+        if "salade" in full_text or "salad" in full_text:
+            qty = find_quantity(r"salades?|salads?")
+            items.append(OrderItemModel(name="Salade Fraîcheur", quantity=qty, price=9.50))
 
         # Check missing
         missing = []

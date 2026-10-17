@@ -11,7 +11,7 @@ import {
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Live Calls', href: '/live-calls', icon: PhoneCall },
+  // { name: 'Live Calls', href: '/live-calls', icon: PhoneCall },
   { name: 'Call History', href: '/calls', icon: History },
   { name: 'Orders', href: '/orders', icon: ShoppingCart },
   { name: 'Customers', href: '/customers', icon: Users },

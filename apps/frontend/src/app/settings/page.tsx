@@ -94,6 +94,46 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="border-b border-slate-100 bg-slate-50/50 p-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Store className="w-5 h-5 text-slate-500" />
+            <h2 className="font-semibold text-slate-900">Voice-Extractable Menu Items</h2>
+          </div>
+          <span className="text-xs px-2.5 py-1 bg-amber-50 text-amber-700 font-medium rounded-full border border-amber-200/60">
+            Active in Voice AI
+          </span>
+        </div>
+        <div className="p-6">
+          <p className="text-sm text-slate-600 mb-4">
+            The Retell voice assistant and order extraction pipeline are currently configured to recognize and extract the following menu items:
+          </p>
+          <div className="divide-y divide-slate-100 border border-slate-100 rounded-lg overflow-hidden">
+            <div className="p-4 flex items-center justify-between bg-slate-50/30 hover:bg-slate-50 transition-colors">
+              <div>
+                <p className="font-medium text-slate-900">Le Gourmet Classic Burger</p>
+                <p className="text-xs text-slate-500 mt-0.5">Keywords: burger, burgers (FR & EN quantities supported)</p>
+              </div>
+              <span className="font-semibold text-slate-900">€14.50</span>
+            </div>
+            <div className="p-4 flex items-center justify-between bg-slate-50/30 hover:bg-slate-50 transition-colors">
+              <div>
+                <p className="font-medium text-slate-900">Pizza Margherita</p>
+                <p className="text-xs text-slate-500 mt-0.5">Keywords: pizza, pizzas, margherita</p>
+              </div>
+              <span className="font-semibold text-slate-900">€12.00</span>
+            </div>
+            <div className="p-4 flex items-center justify-between bg-slate-50/30 hover:bg-slate-50 transition-colors">
+              <div>
+                <p className="font-medium text-slate-900">Salade Fraîcheur</p>
+                <p className="text-xs text-slate-500 mt-0.5">Keywords: salade, salad, salades</p>
+              </div>
+              <span className="font-semibold text-slate-900">€9.50</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

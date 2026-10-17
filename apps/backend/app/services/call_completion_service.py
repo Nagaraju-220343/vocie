@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, List
+from typing import List, Optional
 
 from app.models.call import CallModel
 from app.models.customer import CustomerModel
@@ -29,6 +29,7 @@ class CallCompletionService:
         
         # We process intent even if it was already processed to handle idempotency.
         # But we must avoid duplicating orders.
+        full_transcript_lower = " ".join([m.text for m in final_transcript]).lower()
         result = self.extraction_service.extract(final_transcript)
         logger.info(f"Extraction result: Intent={result.intent}, Validation={result.validationStatus}, Customer={result.customerName}")
 
@@ -144,22 +145,37 @@ class CallCompletionService:
                         "phone": phone_val or order.phone,
                         "address": result.address or order.address,
                     }
+                    is_confirmed = (
+                        "confirmed" in full_transcript_lower 
+                        or "confirmé" in full_transcript_lower
+                        or result.validationStatus == "VALID"
+                    )
+                    
                     if order.status != "CONFIRMED":
                         updates["items"] = [item.model_dump() for item in result.items] if result.items else order.items
-                        # If call ended without explicit confirmation, mark as CANCELLED so it does not linger as duplicate draft
-                        updates["status"] = "CANCELLED"
-                        updates["notes"] = (order.notes or "") + " [Call ended without confirmation]"
                         updates["orderType"] = result.fulfillmentType or order.orderType
+                        if is_confirmed:
+                            updates["status"] = "CONFIRMED"
+                        else:
+                            updates["status"] = "CANCELLED"
+                            updates["notes"] = (order.notes or "") + " [Call ended without confirmation]"
                     
                     if order.id:
                         self.order_repo.update(str(order.id), updates)
                         order = self.order_repo.get_by_id(str(order.id))
             elif order and order.status != "CONFIRMED":
-                # Order exists but was never confirmed before call ended
-                self.order_repo.update(str(order.id), {
-                    "status": "CANCELLED",
-                    "notes": (order.notes or "") + " [Call ended without confirmation]"
-                })
+                is_confirmed = (
+                    "confirmed" in full_transcript_lower 
+                    or "confirmé" in full_transcript_lower
+                    or result.validationStatus == "VALID"
+                )
+                if is_confirmed:
+                    self.order_repo.update(str(order.id), {"status": "CONFIRMED"})
+                else:
+                    self.order_repo.update(str(order.id), {
+                        "status": "CANCELLED",
+                        "notes": (order.notes or "") + " [Call ended without confirmation]"
+                    })
         
         call.status = "COMPLETED"
         self.call_repo.update(str(call.id), call.model_dump(exclude_none=True))
@@ -212,6 +228,7 @@ class CallCompletionService:
             # Broadcast update via socket
             try:
                 import asyncio
+
                 from app.realtime.socket import publisher
                 try:
                     loop = asyncio.get_running_loop()
@@ -283,6 +300,10 @@ class CallCompletionService:
             return self.customer_repo.get_by_id(c_id)
 
     def _create_order(self, call_id: str, customer_id: Optional[str], result) -> OrderModel:
+        order_status = result.validationStatus
+        if result.validationStatus == "VALID":
+            order_status = "CONFIRMED"
+
         order = OrderModel(
             callId=call_id,
             customerId=customer_id,
@@ -290,8 +311,23 @@ class CallCompletionService:
             phone=result.phone,
             address=result.address,
             items=result.items,
-            status=result.validationStatus,
+            status=order_status,
             orderType=result.fulfillmentType or "UNKNOWN"
         )
-        self.order_repo.create(order)
+        created_id = self.order_repo.create(order)
+        order.id = created_id
+        
+        # Broadcast real-time order update so dashboard updates instantly
+        try:
+            import asyncio
+
+            from app.realtime.socket import publisher
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = asyncio.get_event_loop()
+            loop.create_task(publisher.publish("order.created", call_id, 0, order.model_dump()))
+        except Exception as e:
+            logger.warning(f"Could not publish order.created event: {e}")
+            
         return order
