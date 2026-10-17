@@ -47,14 +47,19 @@ async def retell_webhook(
     
     from app.graph.workflow import live_state_service
     
-    if event in ["call_started", "call_analyzed"]:
-        call = call_completion._get_or_create_call(provider_call_id)
-        
-        if event == "call_started":
-            state_update = {"status": "IN_PROGRESS"}
-            live_state_service.process_event(provider_call_id, state_update, "update_call_state")
-            if call and call.id:
-                call_repo.update(str(call.id), {"status": "IN_PROGRESS"})
+    try:
+        if event in ["call_started", "call_analyzed"]:
+            call = call_completion._get_or_create_call(provider_call_id)
+            
+            if event == "call_started":
+                try:
+                    state_update = {"status": "IN_PROGRESS"}
+                    live_state_service.process_event(provider_call_id, state_update, "update_call_state")
+                except Exception as e:
+                    logger.warning(f"LiveStateService call_started error (non-fatal): {e}")
+                    
+                if call and call.id:
+                    call_repo.update(str(call.id), {"status": "IN_PROGRESS"})
             
             # Emit real-time event to notify frontend instantly of active call
             from app.realtime.socket import publisher
@@ -123,5 +128,8 @@ async def retell_webhook(
         loop.create_task(publisher.publish("call.ended", provider_call_id, 0, {
             "status": "COMPLETED"
         }))
+    except Exception as e:
+        logger.error(f"Error handling webhook event {event}: {str(e)}", exc_info=True)
+        return {"status": "error", "message": str(e)}
 
     return {"status": "success"}
