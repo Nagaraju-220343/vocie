@@ -28,7 +28,7 @@ class MongoJSONEncoder(json.JSONEncoder):
 
 def reset_demo_database(dry_run: bool = False, backup_dir: str = None, force: bool = False):
     print("=" * 60)
-    print(" LE GOURMET — DEMO DATABASE RESET PROCEDURE")
+    print(" Dominos Le Chesnay — DEMO DATABASE RESET PROCEDURE")
     print("=" * 60)
     print(f"Timestamp:   {datetime.now().isoformat()}")
     print(f"Environment: {settings.app_env}")
@@ -182,7 +182,7 @@ def reset_demo_database(dry_run: bool = False, backup_dir: str = None, force: bo
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Le Gourmet Demo Database Reset Tool")
+    parser = argparse.ArgumentParser(description="Dominos Le Chesnay Demo Database Reset Tool")
     parser.add_argument("--dry-run", action="store_true", help="Preview records to be deleted without making changes")
     parser.add_argument("--force", action="store_true", help="Execute cleanup without interactive prompt")
     parser.add_argument("--backup-dir", type=str, default=None, help="Directory to store timestamped backups")

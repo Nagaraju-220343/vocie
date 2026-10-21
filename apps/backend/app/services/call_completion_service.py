@@ -8,7 +8,6 @@ from app.models.transcript import TranscriptMessage
 from app.repositories.call_repository import CallRepository
 from app.repositories.customer_repository import CustomerRepository
 from app.repositories.order_repository import OrderRepository
-from app.services.extraction_service import OrderExtractionService
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +16,6 @@ class CallCompletionService:
         self.call_repo = CallRepository()
         self.customer_repo = CustomerRepository()
         self.order_repo = OrderRepository()
-        self.extraction_service = OrderExtractionService()
 
     def process_completed_call(self, provider_call_id: str, final_transcript: List[TranscriptMessage], retell_call_data: Optional[dict] = None) -> Optional[CallModel]:
         logger.info(f"Processing completed call {provider_call_id}")
@@ -26,33 +24,25 @@ class CallCompletionService:
         if not call or not call.id:
             logger.error(f"Could not find or create call for {provider_call_id}")
             return None
-        
-        # We process intent even if it was already processed to handle idempotency.
-        # But we must avoid duplicating orders.
-        full_transcript_lower = " ".join([m.text for m in final_transcript]).lower()
-        result = self.extraction_service.extract(final_transcript)
-        logger.info(f"Extraction result: Intent={result.intent}, Validation={result.validationStatus}, Customer={result.customerName}")
 
-        call.intent = result.intent
-        call.language = result.language
-        
-        # Extract customer name from retell call analysis if available
+        full_transcript_lower = " ".join([m.text for m in final_transcript]).lower()
+
+        # Extract metadata from Retell call data (duration, recording, summary only)
         retell_customer_name = None
         if retell_call_data:
             analysis = retell_call_data.get("call_analysis") or {}
             custom_data = analysis.get("custom_analysis_data") or {}
             if isinstance(custom_data, dict):
                 retell_customer_name = custom_data.get("customer_name") or custom_data.get("customerName")
-            
-            # Duration & recording & summary
+
             duration_ms = retell_call_data.get("duration_ms")
             if duration_ms is not None:
                 call.durationSeconds = max(round(duration_ms / 1000), 1)
-            
+
             rec_url = retell_call_data.get("recording_url")
             if rec_url:
                 call.recordingUrl = rec_url
-                
+
             summary = analysis.get("call_summary")
             if summary:
                 call.summary = summary
@@ -62,7 +52,8 @@ class CallCompletionService:
             existing_orders = self.order_repo.find_by_call_id(provider_call_id)
         order = existing_orders[0] if existing_orders else None
 
-        # Build list of ordered item names to ensure food is never saved as customer name
+
+        # Build a food blacklist to avoid saving a food item as a customer name
         ordered_item_names = {i.name.lower().strip() for i in order.items} if order and order.items else set()
         food_blacklist = {"pizza", "pizzas", "burger", "burgers", "margherita", "salad", "salade", "drink", "order", "item", "dish", "business"}
 
@@ -72,7 +63,6 @@ class CallCompletionService:
             if not val or not val.strip():
                 return None
             cleaned = val.strip()
-            # Strip multiple leading speech fillers
             cleaned = re.sub(
                 r"^(\s*(uh|um|er|ah|eh|oh|well|yeah|yep|so|it's|its|im|i'm|this is|my name is|name is|je m'appelle|c'est|le nom est)\b[\s,.:!?-]*)+",
                 "",
@@ -88,33 +78,22 @@ class CallCompletionService:
             if lower in ["unknown", "web browser", "guest caller", "web call", "customer"] or "browser" in lower:
                 return None
             if lower in ordered_item_names:
-                return False
+                return None
             words = set(lower.split())
             if words & food_blacklist:
                 return None
             return cleaned.title()
 
-        # Phone matching for customer reconciliation across calls
-        phone_val = (order.phone if order else None) or result.phone
-        existing_cust_name = None
-        if phone_val:
-            phone_digits = re.sub(r"\D", "", phone_val)
-            if len(phone_digits) >= 7:
-                for c in self.customer_repo.list():
-                    c_digits = re.sub(r"\D", "", c.phone or "")
-                    if c_digits and (phone_digits.endswith(c_digits[-8:]) or c_digits.endswith(phone_digits[-8:])):
-                        cleaned_c_name = clean_name_str(c.name)
-                        if cleaned_c_name:
-                            existing_cust_name = cleaned_c_name
-                            break
+        # Phone from the order (set by agent during call)
+        phone_val = order.phone if order else None
 
-        # Determine best customer name: prioritize existing customer on file, then confirmed order name, then retell analysis, then transcript extraction
+        # Determine best customer name using only data collected during this call.
+        # We intentionally do NOT fall back to phone-matched historical records
+        # to avoid silently assigning the wrong name from a previous caller.
         candidate_name = None
         for name_source in [
-            existing_cust_name,
             (order.customerName if order else None),
             retell_customer_name,
-            result.customerName,
             call.customerName,
             call.fromNumber
         ]:
@@ -130,62 +109,27 @@ class CallCompletionService:
                 self.order_repo.update(str(order.id), {"customerName": candidate_name})
         elif not call.fromNumber or not clean_name_str(call.fromNumber):
             call.fromNumber = "Customer"
-        
-        if result.intent == "ORDER":
-            customer = self._upsert_customer(result, phone=phone_val, customer_name=candidate_name)
-            if customer:
-                if not order:
-                    logger.info("Creating new order from call.")
-                    order = self._create_order(str(call.id), str(customer.id) if customer and customer.id else None, result)
-                else:
-                    logger.info("Order already exists for this call. Updating it.")
-                    updates = {
-                        "customerId": customer.id if customer else order.customerId,
-                        "customerName": candidate_name or order.customerName,
-                        "phone": phone_val or order.phone,
-                        "address": result.address or order.address,
-                    }
-                    is_confirmed = (
-                        "confirmed" in full_transcript_lower 
-                        or "confirmé" in full_transcript_lower
-                        or result.validationStatus == "VALID"
-                    )
-                    
-                    if order.status != "CONFIRMED":
-                        updates["items"] = [item.model_dump() for item in result.items] if result.items else order.items
-                        updates["orderType"] = result.fulfillmentType or order.orderType
-                        if is_confirmed:
-                            updates["status"] = "CONFIRMED"
-                        else:
-                            updates["status"] = "CANCELLED"
-                            updates["notes"] = (order.notes or "") + " [Call ended without confirmation]"
-                    
-                    if order.id:
-                        self.order_repo.update(str(order.id), updates)
-                        order = self.order_repo.get_by_id(str(order.id))
-            elif order and order.status != "CONFIRMED":
-                is_confirmed = (
-                    "confirmed" in full_transcript_lower 
-                    or "confirmé" in full_transcript_lower
-                    or result.validationStatus == "VALID"
-                )
-                if is_confirmed:
-                    self.order_repo.update(str(order.id), {"status": "CONFIRMED"})
-                else:
-                    self.order_repo.update(str(order.id), {
-                        "status": "CANCELLED",
-                        "notes": (order.notes or "") + " [Call ended without confirmation]"
-                    })
-        
+
+        # Upsert customer record if we have a phone number
+        if phone_val and order:
+            customer = self._upsert_customer_by_phone(
+                phone=phone_val,
+                customer_name=candidate_name,
+                order_customer_id=str(order.customerId) if order.customerId else None
+            )
+            if customer and order and order.id:
+                self.order_repo.update(str(order.id), {"customerId": customer.id})
+
         call.status = "COMPLETED"
         self.call_repo.update(str(call.id), call.model_dump(exclude_none=True))
-        
+
         return self.call_repo.get_by_provider_call_id(provider_call_id)
 
     def process_call_analysis(self, provider_call_id: str, retell_call_data: dict) -> Optional[CallModel]:
         """
         Process post-call analysis webhook from Retell (call_analyzed event).
-        Extracts LLM post-call analysis custom data (like customer_name) and summary.
+        Only updates metadata: call duration, recording URL, and call summary.
+        Does NOT overwrite customerName — that is already set correctly by update_order during the call.
         """
         call = self.call_repo.get_by_provider_call_id(provider_call_id)
         if not call or not call.id:
@@ -193,22 +137,6 @@ class CallCompletionService:
 
         updates = {}
         analysis = retell_call_data.get("call_analysis") or {}
-        custom_data = analysis.get("custom_analysis_data") or {}
-        
-        cust_name = None
-        if isinstance(custom_data, dict):
-            cust_name = custom_data.get("customer_name") or custom_data.get("customerName")
-
-        food_blacklist = {"pizza", "pizzas", "burger", "burgers", "margherita", "salad", "salade", "drink", "order", "item", "dish", "business"}
-        if cust_name and cust_name.strip():
-            clean_name = cust_name.strip()
-            cand_words = set(clean_name.lower().split())
-            if not (cand_words & food_blacklist) and clean_name.lower() not in ["unknown", "web browser", "customer"]:
-                updates["customerName"] = clean_name
-                if not call.fromNumber or call.fromNumber in ["unknown", "Web Browser", "Guest Caller", "Web Call", "Customer", ""] or "browser" in call.fromNumber.lower():
-                    updates["fromNumber"] = clean_name
-        elif not call.fromNumber or call.fromNumber in ["unknown", "Web Browser"] or "browser" in call.fromNumber.lower():
-            updates["fromNumber"] = "Customer"
 
         summary = analysis.get("call_summary")
         if summary:
@@ -224,7 +152,7 @@ class CallCompletionService:
 
         if updates:
             self.call_repo.update(str(call.id), updates)
-            
+
             # Broadcast update via socket
             try:
                 import asyncio
@@ -261,73 +189,37 @@ class CallCompletionService:
             call = self.call_repo.get_by_id(created_id)
         return call
 
-    def _upsert_customer(self, result, phone: Optional[str] = None, customer_name: Optional[str] = None) -> Optional[CustomerModel]:
-        target_phone = phone or result.phone
-        if not target_phone:
+    def _upsert_customer_by_phone(self, phone: str, customer_name: Optional[str] = None, order_customer_id: Optional[str] = None) -> Optional[CustomerModel]:
+        """Upsert a customer record by phone number and increment call count."""
+        if not phone:
             logger.warning("Cannot upsert customer: No phone number available.")
             return None
-            
+
         import re
-        target_digits = re.sub(r"\D", "", target_phone)
+        target_digits = re.sub(r"\D", "", phone)
         customers = self.customer_repo.list()
-        
-        # Match by phone digits (last 8 digits)
+
         existing = None
         for c in customers:
             c_digits = re.sub(r"\D", "", c.phone or "")
             if c_digits and (target_digits.endswith(c_digits[-8:]) or c_digits.endswith(target_digits[-8:])):
                 existing = c
                 break
-                
-        name_val = customer_name or result.customerName
-        
+
         if existing:
-            updates = {}
-            if name_val and (not existing.name or existing.name.lower() in ["unknown", "customer"]):
-                updates["name"] = name_val
-            updates["callCount"] = existing.callCount + 1
+            updates: dict = {"callCount": existing.callCount + 1}
+            # Only update name if the existing record has a placeholder
+            if customer_name and (not existing.name or existing.name.lower() in ["unknown", "customer"]):
+                updates["name"] = customer_name
             if existing.id:
                 self.customer_repo.update(str(existing.id), updates)
                 return self.customer_repo.get_by_id(str(existing.id))
             return existing
         else:
             new_customer = CustomerModel(
-                name=name_val or "Customer",
-                phone=target_phone,
+                name=customer_name or "Customer",
+                phone=phone,
                 callCount=1
             )
             c_id = self.customer_repo.create(new_customer)
             return self.customer_repo.get_by_id(c_id)
-
-    def _create_order(self, call_id: str, customer_id: Optional[str], result) -> OrderModel:
-        order_status = result.validationStatus
-        if result.validationStatus == "VALID":
-            order_status = "CONFIRMED"
-
-        order = OrderModel(
-            callId=call_id,
-            customerId=customer_id,
-            customerName=result.customerName,
-            phone=result.phone,
-            address=result.address,
-            items=result.items,
-            status=order_status,
-            orderType=result.fulfillmentType or "UNKNOWN"
-        )
-        created_id = self.order_repo.create(order)
-        order.id = created_id
-        
-        # Broadcast real-time order update so dashboard updates instantly
-        try:
-            import asyncio
-
-            from app.realtime.socket import publisher
-            try:
-                loop = asyncio.get_running_loop()
-            except RuntimeError:
-                loop = asyncio.get_event_loop()
-            loop.create_task(publisher.publish("order.created", call_id, 0, order.model_dump()))
-        except Exception as e:
-            logger.warning(f"Could not publish order.created event: {e}")
-            
-        return order

@@ -8,6 +8,9 @@ class OrderItemModel(BaseModel):
     name: str
     quantity: int
     price: float | None = None
+    size: str | None = None
+    crust: str | None = None
+    options: List[str] = Field(default_factory=list)
 
 class OrderModel(BaseModel):
     id: str | None = Field(default=None, alias="_id")
@@ -20,5 +23,7 @@ class OrderModel(BaseModel):
     orderType: str = "UNKNOWN"
     status: str = "PENDING"
     notes: str = ""
+    restaurant: str = "le_gourmet"
+    source: str = "voice_agent"
     createdAt: datetime = Field(default_factory=datetime.utcnow)
     updatedAt: datetime = Field(default_factory=datetime.utcnow)

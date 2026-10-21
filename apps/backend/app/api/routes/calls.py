@@ -33,6 +33,70 @@ def get_calls(
         pagination=Pagination(page=page, pageSize=pageSize, total=total, totalPages=total_pages)
     )
 
+import csv
+import io
+from fastapi.responses import StreamingResponse
+
+@router.get("/export")
+def export_calls_csv(
+    status: Optional[str] = None,
+    intent: Optional[str] = None,
+) -> StreamingResponse:
+    filters: dict = {}
+    if status: filters["status"] = status
+    if intent: filters["intent"] = intent
+
+    # Retrieve all matching calls up to 10,000 records
+    items = service.repository.list(limit=10000, skip=0, filters=filters)
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # Header
+    writer.writerow([
+        "Call ID",
+        "Date",
+        "Time (UTC)",
+        "Caller / Customer",
+        "Phone Number",
+        "Intent",
+        "Duration (Seconds)",
+        "Status",
+        "Language",
+        "Escalated",
+        "Summary"
+    ])
+
+    for call in items:
+        caller_name = call.customerName or "Customer"
+        date_str = call.createdAt.strftime("%Y-%m-%d") if call.createdAt else ""
+        time_str = call.createdAt.strftime("%H:%M:%S") if call.createdAt else ""
+
+        writer.writerow([
+            call.providerCallId or call.id or "",
+            date_str,
+            time_str,
+            caller_name,
+            call.fromNumber or "",
+            call.intent or "UNKNOWN",
+            call.durationSeconds,
+            call.status or "COMPLETED",
+            call.language or "en",
+            "Yes" if call.escalated else "No",
+            (call.summary or "").replace("\r", " ").replace("\n", " ").strip()
+        ])
+
+    csv_data = output.getvalue()
+
+    return StreamingResponse(
+        iter([csv_data]),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": 'attachment; filename="call_history.csv"',
+            "Access-Control-Expose-Headers": "Content-Disposition",
+        }
+    )
+
 @router.get("/{call_id}", response_model=CallResponse, responses={404: {"model": ErrorResponse}})
 def get_call(call_id: str) -> CallResponse:
     call = service.get_call(call_id)

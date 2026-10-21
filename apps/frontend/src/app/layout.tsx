@@ -8,8 +8,8 @@ import { Header } from '@/components/layout/Header';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Le Gourmet Voice Assistant',
-  description: 'Operations dashboard for Le Gourmet bilingual voice agent',
+  title: "Dominos Le Chesnay — Voice Assistant",
+  description: "Voice Assistant operations dashboard for real-time calls and orders",
 };
 
 export default function RootLayout({
@@ -19,13 +19,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.className} h-screen bg-slate-50 overflow-hidden flex`}>
+      <body className={`${inter.className} h-screen bg-[#f8fafc] text-slate-900 overflow-hidden flex antialiased`}>
         <Sidebar />
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <Suspense fallback={<div className="h-16 border-b border-slate-200" />}>
+        <div className="flex flex-1 flex-col overflow-hidden min-w-0">
+          <Suspense fallback={<div className="h-14 border-b border-slate-200 bg-white" />}>
             <Header />
           </Suspense>
-          <main className="flex-1 overflow-y-auto bg-slate-50 p-6">
+          <main className="flex-1 overflow-y-auto bg-[#f8fafc] p-6 md:p-8">
             {children}
           </main>
         </div>
@@ -33,3 +33,4 @@ export default function RootLayout({
     </html>
   );
 }
+

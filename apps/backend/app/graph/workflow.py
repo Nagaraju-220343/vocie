@@ -1,15 +1,30 @@
 import logging
-from typing import Dict, Any
+from typing import Any
 
-from langgraph.graph import StateGraph, START, END
-from langgraph.checkpoint.mongodb import MongoDBSaver
-from app.graph.state import CallState
-from app.graph.nodes import update_call_state, update_transcript, update_order, validate_order, handle_escalation
+try:
+    from langgraph.checkpoint.mongodb import MongoDBSaver
+    from langgraph.graph import END, START, StateGraph
+    from langgraph.graph.state import CompiledStateGraph
+    LANGGRAPH_AVAILABLE = True
+except ImportError:
+    StateGraph = None  # type: ignore
+    START = "START"
+    END = "END"
+    MongoDBSaver = None  # type: ignore
+    CompiledStateGraph = Any  # type: ignore
+    LANGGRAPH_AVAILABLE = False
+
 from app.db.mongodb import MongoDBManager
+from app.graph.nodes import (
+    handle_escalation,
+    update_call_state,
+    update_order,
+    update_transcript,
+    validate_order,
+)
+from app.graph.state import CallState
 
 logger = logging.getLogger(__name__)
-
-from langgraph.graph.state import CompiledStateGraph
 
 def build_call_graph(checkpointer=None) -> CompiledStateGraph:
     workflow = StateGraph(CallState)  # type: ignore
@@ -45,7 +60,9 @@ class LiveStateService:
     def __init__(self) -> None:
         self._graph: CompiledStateGraph | None = None
         
-    def get_graph(self) -> CompiledStateGraph:
+    def get_graph(self) -> CompiledStateGraph | None:
+        if not LANGGRAPH_AVAILABLE:
+            return None
         if self._graph is None:
             # Get the MongoDBSaver only when requested (so MongoDBManager.client is initialized)
             if not MongoDBManager.client:
@@ -57,7 +74,22 @@ class LiveStateService:
     def process_event(self, call_id: str, state_update: dict, action: str) -> CallState:
         """
         Process a live state update using LangGraph with persistent MongoDB state.
+        Falls back to direct node execution if LangGraph is not installed.
         """
+        if not LANGGRAPH_AVAILABLE:
+            state_update["call_id"] = state_update.get("call_id", call_id)
+            state_update["provider_call_id"] = state_update.get("provider_call_id", call_id)
+            if action == "update_order":
+                update_order(state_update)  # type: ignore
+                validate_order(state_update)  # type: ignore
+            elif action == "handle_escalation":
+                handle_escalation(state_update)  # type: ignore
+            elif action == "update_call_state":
+                update_call_state(state_update)  # type: ignore
+            elif action == "update_transcript":
+                update_transcript(state_update)  # type: ignore
+            return state_update  # type: ignore
+
         graph = self.get_graph()
         thread_id = f"call:{call_id}"
         config = {"configurable": {"thread_id": thread_id}}

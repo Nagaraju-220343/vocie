@@ -7,4 +7,7 @@ __pycache__/
 .ruff_cache/
 backups/
 backup_*.json
+ngrok.yml
+ngrok.zip
+ngrok/
 

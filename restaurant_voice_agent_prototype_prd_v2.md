@@ -559,7 +559,7 @@ Example:
 
 ``` json
 {
-  "restaurantName": "Le Gourmet",
+  "restaurantName": "Dominos Le Chesnay",
   "language": ["fr", "en"],
   "openingHours": {
     "monday": "11:00-22:00",
@@ -594,7 +594,7 @@ The AI should introduce itself as the restaurant's virtual assistant.
 Example French opening:
 
 ``` text
-Bonjour, vous êtes bien chez Le Gourmet.
+Bonjour, vous êtes bien chez Dominos Le Chesnay.
 Je suis l'assistant virtuel du restaurant.
 Comment puis-je vous aider ?
 ```
@@ -602,7 +602,7 @@ Comment puis-je vous aider ?
 Example English opening:
 
 ``` text
-Hello, you've reached Le Gourmet.
+Hello, you've reached Dominos Le Chesnay.
 I'm the restaurant's virtual assistant.
 How can I help you today?
 ```

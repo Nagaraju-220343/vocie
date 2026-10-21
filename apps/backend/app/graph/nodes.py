@@ -37,7 +37,7 @@ def update_order(state: CallState) -> dict:
         # We need to map order_data to OrderUpdate schema
         updates = OrderUpdate(**order_data)
         # Use existing OrderService update flow (which handles live draft auto-creation)
-        updated = order_service.update_order(call_id, updates)
+        updated, err = order_service.update_order(call_id, updates)
         if updated:
             return {"order": updated.model_dump(mode="json")}
     except Exception as e:

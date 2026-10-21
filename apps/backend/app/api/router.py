@@ -25,8 +25,6 @@ api_router.include_router(voice_router)
 from app.api.routes.webhooks import router as webhooks_router
 api_router.include_router(webhooks_router, prefix="/webhooks", tags=["Webhooks"])
 
-from app.api.routes.demo import router as demo_router
-api_router.include_router(demo_router)
 # Extra endpoint for call specific feedback
 @api_router.get("/calls/{call_id}/feedback", response_model=List[FeedbackResponse], tags=["Feedback"])
 def get_call_feedback(call_id: str) -> List[FeedbackResponse]:

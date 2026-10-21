@@ -4,9 +4,8 @@ import { usePathname } from 'next/navigation';
 
 export function Header() {
   const pathname = usePathname();
-  
+
   const getPageTitle = () => {
-    if (pathname.startsWith('/live-calls')) return 'Live Calls';
     if (pathname.startsWith('/calls')) return 'Call History';
     if (pathname.startsWith('/orders')) return 'Orders';
     if (pathname.startsWith('/customers')) return 'Customers';
@@ -16,17 +15,15 @@ export function Header() {
   };
 
   return (
-    <header className="bg-white shadow-sm h-16 flex items-center justify-between px-6 border-b border-slate-200">
-      <div className="flex items-center space-x-4">
-        <h2 className="text-lg font-semibold text-slate-800">{getPageTitle()}</h2>
+    <header className="bg-white h-14 shrink-0 flex items-center justify-between px-6 border-b border-slate-200 select-none">
+      <div className="flex items-center">
+        <h2 className="text-base font-bold text-slate-900 tracking-tight">{getPageTitle()}</h2>
       </div>
-      <div className="flex items-center space-x-4">
-        <div className="flex items-center space-x-2 text-sm font-medium">
-          <span className="relative flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
-          </span>
-          <span className="text-slate-600">API Connected</span>
+
+      <div className="flex items-center space-x-3">
+        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/70 text-emerald-700 text-xs font-semibold">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+          <span>API Connected</span>
         </div>
       </div>
     </header>

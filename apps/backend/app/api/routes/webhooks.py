@@ -59,18 +59,19 @@ async def retell_webhook(
             if call and call.id:
                 call_repo.update(str(call.id), {"status": "IN_PROGRESS"})
         
-            # Emit real-time event to notify frontend instantly of active call
-            from app.realtime.socket import publisher
-            import asyncio
-            try:
-                loop = asyncio.get_running_loop()
-            except RuntimeError:
-                loop = asyncio.get_event_loop()
-            loop.create_task(publisher.publish("call.started", provider_call_id, 0, {
-                "status": "IN_PROGRESS",
-                "callId": str(call.id),
-                "providerCallId": provider_call_id
-            }))
+                # Emit real-time event to notify frontend instantly of active call
+                import asyncio
+
+                from app.realtime.socket import publisher
+                try:
+                    loop = asyncio.get_running_loop()
+                except RuntimeError:
+                    loop = asyncio.get_event_loop()
+                loop.create_task(publisher.publish("call.started", provider_call_id, 0, {
+                    "status": "IN_PROGRESS",
+                    "callId": str(call.id),
+                    "providerCallId": provider_call_id
+                }))
             
         elif event == "call_analyzed":
             call = call_completion._get_or_create_call(provider_call_id)
@@ -114,8 +115,9 @@ async def retell_webhook(
             call_completion.process_completed_call(provider_call_id, messages, retell_call_data=call_data)
             
             # Emit real-time events to update the frontend instantly
-            from app.realtime.socket import publisher
             import asyncio
+
+            from app.realtime.socket import publisher
             try:
                 loop = asyncio.get_running_loop()
             except RuntimeError:

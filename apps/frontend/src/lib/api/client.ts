@@ -74,15 +74,4 @@ export const apiClient = {
       return fetcher<PaginatedFeedback>(`/feedback${query ? `?${query}` : ''}`);
     },
   },
-  voice: {
-    createWebCall: () =>
-      fetcher<{
-        provider: string;
-        call_id: string;
-        access_token: string;
-        status: string;
-      }>('/voice/web-call', {
-        method: 'POST',
-      }),
-  },
 };

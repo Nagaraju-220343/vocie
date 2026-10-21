@@ -60,7 +60,8 @@ def test_confirm_order_success(client):
 
     conf_res = client.post(f"/api/orders/{order_id}/confirm")
     assert conf_res.status_code == 200
-    assert conf_res.json()["status"] == "CONFIRMED"
+    assert conf_res.json()["status"] in ["confirmed", "CONFIRMED"]
+    assert conf_res.json()["success"] is True
     
 def test_confirm_order_missing_customer(client):
     payload = {
@@ -73,7 +74,7 @@ def test_confirm_order_missing_customer(client):
 
     conf_res = client.post(f"/api/orders/{order_id}/confirm")
     assert conf_res.status_code == 400
-    assert "Customer name or phone is required" in conf_res.json()["detail"]["error"]["message"]
+    assert "Customer details required" in conf_res.json()["detail"]["error"]["message"]
 
 def test_confirm_order_missing_address_delivery(client):
     payload = {
